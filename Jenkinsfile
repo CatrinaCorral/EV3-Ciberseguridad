@@ -91,12 +91,11 @@ pipeline {
               --format HTML \
               --format XML \
               --out /report \
-              --project EV3-Ciberseguridad \
-              --noupdate || true
+              --project EV3-Ciberseguridad || true
 
           docker run --rm \
             -v dc-report-vol:/report \
-            alpine ls -la /report/
+            alpine ls -la /report/ || true
 
           docker run --rm \
             -v dc-report-vol:/report \
