@@ -2,10 +2,10 @@ pipeline {
   agent any
 
   environment {
-    APP_URL    = 'http://localhost:5000'
-    SONAR_HOST = 'http://sonarqube-custom:9000/'
-    REPORT_DIR = 'zap-reports'
-    DC_HOME    = tool 'dependency-check'
+    APP_URL       = 'http://localhost:5000'
+    SONAR_HOST    = 'http://sonarqube-custom:9000/'
+    REPORT_DIR    = 'zap-reports'
+    DC_HOME       = tool 'dependency-check'
   }
 
   stages {
@@ -66,7 +66,8 @@ pipeline {
                 -Dsonar.projectName=EV3-Ciberseguridad \
                 -Dsonar.sources=. \
                 -Dsonar.python.version=3 \
-                -Dsonar.exclusions=venv/**,zap-reports/**,dc-report/**
+                -Dsonar.exclusions=venv/**,zap-reports/**,dc-report/** \
+                -Dsonar.token=$SONAR_AUTH_TOKEN
             """
           }
         }
@@ -95,7 +96,7 @@ pipeline {
 
           docker run --rm \
             -v dc-report-vol:/report \
-            alpine ls -la /report/ || true
+            alpine ls -la /report/
 
           docker run --rm \
             -v dc-report-vol:/report \
