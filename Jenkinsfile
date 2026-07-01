@@ -13,15 +13,17 @@ pipeline {
                 echo 'Ejecutando revision de seguridad sobre vulnerable_app.py...'
 
                 sh '''
-                    echo "Hallazgo SQL Injection:"
-                    grep -n "SELECT \\* FROM users WHERE username" vulnerable_app.py || true
+                    echo "===== SECURITY SCAN: SQL INJECTION ====="
+                    grep -n 'query = f"SELECT' vulnerable_app.py || true
 
-                    echo "Hallazgo XSS:"
+                    echo "===== SECURITY SCAN: XSS ====="
                     grep -n "task = request.form\\['task'\\]" vulnerable_app.py || true
                     grep -n "task\\['task'\\]" vulnerable_app.py || true
 
-                    echo "Hallazgo CSRF:"
+                    echo "===== SECURITY SCAN: CSRF ====="
                     grep -n "@app.route('/delete_task" vulnerable_app.py || true
+
+                    echo "Revision de seguridad finalizada. Revisar hallazgos encontrados en consola."
                 '''
             }
         }
