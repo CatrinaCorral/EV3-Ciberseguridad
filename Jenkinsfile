@@ -65,8 +65,9 @@ pipeline {
                 -Dsonar.projectKey=EV3-Ciberseguridad \
                 -Dsonar.projectName=EV3-Ciberseguridad \
                 -Dsonar.sources=. \
+                -Dsonar.inclusions=vulnerable_app.py \
                 -Dsonar.python.version=3 \
-                -Dsonar.exclusions=venv/**,zap-reports/**,dc-report/** \
+                -Dsonar.exclusions=venv/**,zap-reports/**,dc-report/**,**/*.html,**/*.json,**/*.xml,**/*.js,**/*.css \
                 -Dsonar.token=$SONAR_AUTH_TOKEN
             """
           }
