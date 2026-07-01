@@ -59,8 +59,8 @@ pipeline {
 
     stage('Analyze - SonarQube') {
       steps {
-        withSonarQubeEnv('sonarqube-server') {
-          withEnv(["PATH+SONAR=${tool 'sonarqube-server'}/bin"]) {
+        withSonarQubeEnv('sonarqube-scanner') {
+          withEnv(["PATH+SONAR=${tool 'sonarqube-scanner'}/bin"]) {
             sh """
               sonar-scanner \
                 -Dsonar.projectKey=ev3-ciberseguridad \
