@@ -150,8 +150,8 @@ pipeline {
             ghcr.io/zaproxy/zaproxy:stable \
               zap-baseline.py \
                 -t http://ev3-app:5000 \
-                -r /zap/wrk/zap_report.html \
-                -J /zap/wrk/zap_report.json \
+                -r zap_report.html \
+                -J zap_report.json \
                 --auto || true
 
           echo "=== Contenido volumen ZAP ==="
