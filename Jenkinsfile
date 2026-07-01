@@ -91,7 +91,8 @@ pipeline {
               --format HTML \
               --format XML \
               --out /report \
-              --project EV3-Ciberseguridad || true
+              --project EV3-Ciberseguridad \
+              --noupdate || true
 
           docker run --rm \
             -v dc-report-vol:/report \
