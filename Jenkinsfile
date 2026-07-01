@@ -129,27 +129,51 @@ pipeline {
     stage('Security Test - DAST ZAP') {
       steps {
         sh """
-          rm -rf \${WORKSPACE}/zap-reports
-          mkdir -p \${WORKSPACE}/zap-reports
-          chmod 777 \${WORKSPACE}/zap-reports
+          docker volume rm zap-report-vol 2>/dev/null || true
+          docker volume create zap-report-vol
 
+          docker run --rm \
+            -v zap-report-vol:/zap/wrk \
+            alpine sh -c 'chmod 777 /zap/wrk'
+
+          echo "=== Probando acceso a la aplicacion ==="
           docker run --rm \
             --network devsecops-network \
             curlimages/curl:latest \
             -sf http://ev3-app:5000 || echo "App no responde"
 
+          echo "=== Ejecutando OWASP ZAP Baseline Scan ==="
           docker run --rm \
             -u root \
             --network devsecops-network \
-            -v \${WORKSPACE}/zap-reports:/zap/wrk/:rw \
+            -v zap-report-vol:/zap/wrk/:rw \
             ghcr.io/zaproxy/zaproxy:stable \
               zap-baseline.py \
                 -t http://ev3-app:5000 \
-                -r zap_report.html \
-                -J zap_report.json \
+                -r /zap/wrk/zap_report.html \
+                -J /zap/wrk/zap_report.json \
                 --auto || true
 
-          echo "=== Contenido zap-reports ==="
+          echo "=== Contenido volumen ZAP ==="
+          docker run --rm \
+            -v zap-report-vol:/zap/wrk \
+            alpine ls -la /zap/wrk
+
+          rm -rf \${WORKSPACE}/zap-reports
+          mkdir -p \${WORKSPACE}/zap-reports
+
+          docker rm -f zap-copy 2>/dev/null || true
+
+          docker create --name zap-copy \
+            -v zap-report-vol:/report \
+            alpine
+
+          docker cp zap-copy:/report/. \${WORKSPACE}/zap-reports/ || true
+          docker rm zap-copy || true
+
+          chmod 644 \${WORKSPACE}/zap-reports/* 2>/dev/null || true
+
+          echo "=== Contenido zap-reports en workspace ==="
           ls -la \${WORKSPACE}/zap-reports/
         """
 
