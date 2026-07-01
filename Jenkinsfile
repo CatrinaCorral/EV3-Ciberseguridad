@@ -2,10 +2,10 @@ pipeline {
   agent any
 
   environment {
-    APP_URL     = 'http://localhost:5000'
-    SONAR_HOST = 'http://sonarqube-custom:9000'
+    APP_URL    = 'http://localhost:5000'
+    SONAR_HOST = 'http://sonarqube-custom:9000/'
     REPORT_DIR = 'zap-reports'
-    VENV       = 'venv'
+    DC_HOME    = tool 'dependency-check'
   }
 
   stages {
@@ -22,16 +22,15 @@ pipeline {
     stage('Test - Unit') {
       steps {
         sh '''
-          python3 -m venv ${VENV} || true
-          . ${VENV}/bin/activate || true
+          python3 -m venv venv || true
+          . venv/bin/activate || true
 
           pip install --upgrade pip || true
           pip install -r requirements.txt || true
-          pip install pytest || true
+          pip install pytest flask || true
 
           pytest --junitxml=results.xml || true
         '''
-
         junit allowEmptyResults: true, testResults: 'results.xml'
       }
     }
@@ -59,7 +58,7 @@ pipeline {
 
     stage('Analyze - SonarQube') {
       steps {
-        withSonarQubeEnv('sonarqube-scanner') {
+        withSonarQubeEnv('sonarqube-server') {
           withEnv(["PATH+SONAR=${tool 'sonarqube-scanner'}/bin"]) {
             sh """
               sonar-scanner \
@@ -76,17 +75,53 @@ pipeline {
 
     stage('Security Test - SCA Dependencies') {
       steps {
+        sh """
+          docker volume rm dc-report-vol 2>/dev/null || true
+          docker volume create dc-report-vol
+          docker volume create dc-nvd-data || true
+
+          docker run --rm \
+            --network devsecops-network \
+            -v \${WORKSPACE}:/src:ro \
+            -v dc-report-vol:/report \
+            -v dc-nvd-data:/usr/share/dependency-check/data \
+            owasp/dependency-check:latest \
+              --scan /src \
+              --format HTML \
+              --format XML \
+              --out /report \
+              --project ev3-ciberseguridad \
+              --noupdate || true
+
+          docker run --rm \
+            -v dc-report-vol:/report \
+            alpine ls -la /report/ || true
+
+          docker run --rm \
+            -v dc-report-vol:/report \
+            alpine cat /report/dependency-check-report.xml || true
+
+          mkdir -p \${WORKSPACE}/dc-report
+        """
+
         sh '''
-          . ${VENV}/bin/activate || true
+          docker run --rm \
+            -v dc-report-vol:/report \
+            -v ${WORKSPACE}/dc-report:/dest \
+            alpine sh -c 'cp /report/*.html /dest/ 2>/dev/null || true; cp /report/*.xml /dest/ 2>/dev/null || true; chmod 644 /dest/* 2>/dev/null || true'
 
-          pip install bandit safety || true
-
-          echo "===== RESULTADOS SECURITY SCAN - BANDIT ====="
-          bandit -r . -x ./venv -f txt || true
-
-          echo "===== RESULTADOS DEPENDENCY SCAN - SAFETY ====="
-          safety check -r requirements.txt || true
+          echo "=== Archivos copiados al workspace ==="
+          ls -la ${WORKSPACE}/dc-report/ || true
         '''
+
+        publishHTML(target: [
+          allowMissing         : true,
+          alwaysLinkToLastBuild: true,
+          keepAll              : true,
+          reportDir            : "${WORKSPACE}/dc-report",
+          reportFiles          : 'dependency-check-report.html',
+          reportName           : 'Dependency-Check Report'
+        ])
       }
     }
 
@@ -120,13 +155,7 @@ pipeline {
           reportName           : 'OWASP ZAP Report'
         ])
 
-        sh 'find ${WORKSPACE} -name "*.html" -o -name "*.json" 2>/dev/null | head -30'
-      }
-    }
-
-    stage('Deploy') {
-      steps {
-        echo 'Despliegue finalizado en entorno de prueba.'
+        sh 'find ${WORKSPACE} -name "*.html" -o -name "*.xml" -o -name "*.json" 2>/dev/null | head -30'
       }
     }
   }
@@ -134,24 +163,18 @@ pipeline {
   post {
     always {
       sh """
+        cp \${WORKSPACE}/dc-report/*.html \${WORKSPACE}/ 2>/dev/null || true
+        cp \${WORKSPACE}/dc-report/*.xml \${WORKSPACE}/ 2>/dev/null || true
         cp \${WORKSPACE}/zap-reports/*.html \${WORKSPACE}/ 2>/dev/null || true
         cp \${WORKSPACE}/zap-reports/*.json \${WORKSPACE}/ 2>/dev/null || true
       """
 
       archiveArtifacts(
-        artifacts         : 'zap_report.html,zap_report.json,results.xml',
+        artifacts         : 'dependency-check-report.html,dependency-check-report.xml,zap_report.html,zap_report.json,results.xml',
         allowEmptyArchive : true
       )
 
       sh 'docker rm -f ev3-app || true'
-    }
-
-    success {
-      echo 'Pipeline ejecutado correctamente.'
-    }
-
-    failure {
-      echo 'Pipeline fallo.'
     }
   }
 }
