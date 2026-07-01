@@ -135,6 +135,12 @@ pipeline {
 
           docker run --rm \
             --network devsecops-network \
+            curlimages/curl:latest \
+            -sf http://ev3-app:5000 || echo "App no responde"
+
+          docker run --rm \
+            -u root \
+            --network devsecops-network \
             -v \${WORKSPACE}/zap-reports:/zap/wrk/:rw \
             ghcr.io/zaproxy/zaproxy:stable \
               zap-baseline.py \
