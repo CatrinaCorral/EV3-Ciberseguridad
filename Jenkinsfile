@@ -62,7 +62,7 @@ pipeline {
           withEnv(["PATH+SONAR=${tool 'sonarqube-scanner'}/bin"]) {
             sh """
               sonar-scanner \
-                -Dsonar.projectKey=ev3-ciberseguridad \
+                -Dsonar.projectKey=EV3-Ciberseguridad \
                 -Dsonar.projectName=EV3-Ciberseguridad \
                 -Dsonar.sources=. \
                 -Dsonar.python.version=3 \
@@ -91,7 +91,7 @@ pipeline {
               --format HTML \
               --format XML \
               --out /report \
-              --project ev3-ciberseguridad \
+              --project EV3-Ciberseguridad \
               --noupdate || true
 
           docker run --rm \
